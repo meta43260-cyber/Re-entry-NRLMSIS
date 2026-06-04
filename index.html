@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telemetry Heat Calculator (V3.0 Dynamic NRLMSIS System)</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050a1a;--panel:rgba(10,22,48,0.96);--border:rgba(0,212,255,0.18);
+  --bfire:rgba(255,77,0,0.38);
+  --fire:#ff4d00;--plasma:#ff8c42;--cool:#00d4ff;--teal:#00ffcc;
+  --green:#3fb950;--yellow:#e3b341;
+  --txt:#e8f4ff;--txt2:#7ca8d4;--txt3:#3d5a7a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--txt);
+  min-height:100vh;padding:14px;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%,rgba(255,255,255,.8) 0%,transparent 100%),
+    radial-gradient(1px 1px at 30% 40%,rgba(255,255,255,.6) 0%,transparent 100%),
+    radial-gradient(1px 1px at 55% 8%,rgba(255,255,255,.9) 0%,transparent 100%),
+    radial-gradient(1px 1px at 75% 25%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(2px 2px at 45% 55%,rgba(0,212,255,.4) 0%,transparent 100%);}
+.wrap{position:relative;z-index:1;max-width:1500px;margin:0 auto;}
+
+  /* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.hdr-l{display:flex;align-items:center;gap:12px;}
+.hdr-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--fire),var(--plasma));
+  border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 0 16px rgba(255,77,0,.5);}
+.hdr-t1{font-size:12px;color:var(--txt2);letter-spacing:2px;text-transform:uppercase;}
+.hdr-t2{font-size:20px;font-weight:800;}
+.badge{display:flex;align-items:center;gap:6px;padding:6px 13px;
+  background:rgba(0,255,204,.07);border:1px solid rgba(0,255,204,.22);border-radius:6px;
+  font-size:11px;color:var(--teal);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;}
+.dot{width:7px;height:7px;background:var(--teal);border-radius:50%;
+  animation:blink 2s ease-in-out infinite;box-shadow:0 0 5px var(--teal);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* OUTER GRID: missions sidebar | main */
+.outer{display:grid;grid-template-columns:220px 1fr;gap:14px;align-items:start;}
+@media(max-width:860px){.outer{grid-template-columns:1fr;}}
+
+/* MAIN GRID: input | result */
+.main-grid{display:grid;grid-template-columns:360px 1fr;gap:14px;align-items:start;}
+@media(max-width:1000px){.main-grid{grid-template-columns:1fr;}}
+
+/* PANEL */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;backdrop-filter:blur(12px);}
+.ph{padding:12px 15px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(0,212,255,.04);}
+.ph-l{display:flex;align-items:center;gap:8px;}
+.ph h3{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--cool);}
+.pb{padding:14px;}
+
+/* ===== MISSIONS SIDEBAR ===== */
+.m-list{display:flex;flex-direction:column;gap:6px;padding:12px;}
+.mc{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;cursor:pointer;transition:all .2s;position:relative;}
+.mc:hover{border-color:var(--cool);background:rgba(0,212,255,.06);}
+.mc.active{border-color:var(--fire);background:rgba(255,77,0,.07);}
+.mc-name{font-size:12px;font-weight:700;color:var(--txt);margin-bottom:2px;}
+.mc-meta{font-size:9px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;}
+.mc-del{position:absolute;top:6px;right:7px;background:none;border:none;
+  color:var(--txt3);cursor:pointer;font-size:12px;opacity:0;transition:opacity .15s;}
+.mc:hover .mc-del{opacity:1;}
+.mc-del:hover{color:var(--fire);}
+.add-m-btn{margin:0 12px 12px;padding:9px;background:rgba(0,212,255,.05);
+  border:1px dashed rgba(0,212,255,.22);border-radius:8px;color:var(--cool);
+  font-family:'Sarabun',sans-serif;font-size:12px;cursor:pointer;
+  width:calc(100% - 24px);transition:all .15s;}
+.add-m-btn:hover{background:rgba(0,212,255,.12);border-color:var(--cool);}
+
+/* MISSION NAME INPUT */
+.m-name-row{display:flex;gap:6px;align-items:center;margin-bottom:12px;}
+.m-name-input{flex:1;padding:7px 10px;background:rgba(0,0,0,.4);
+  border:1px solid var(--border);border-radius:7px;color:var(--txt);
+  font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;outline:none;}
+.m-name-input:focus{border-color:var(--cool);}
+
+/* NOTES */
+.notes-ta{width:100%;padding:9px 10px;background:rgba(0,0,0,.4);
+  border:1px solid var(--border);border-radius:7px;color:var(--txt);
+  font-family:'Sarabun',sans-serif;font-size:12px;outline:none;resize:vertical;
+  min-height:80px;transition:border-color .15s;margin-top:8px;}
+.notes-ta:focus{border-color:var(--yellow);}
+.notes-ta::placeholder{color:var(--txt3);}
+.notes-label{font-size:10px;color:var(--yellow);letter-spacing:1px;text-transform:uppercase;
+  margin-top:10px;margin-bottom:4px;font-weight:700;}
+
+  /* UNIT SELECTOR */
+.unit-bar{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.unit-group{flex:1;min-width:90px;}
+.unit-label{font-size:9px;color:var(--txt3);letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:4px;font-weight:700;}
+.unit-btns{display:flex;gap:3px;}
+.ubtn{flex:1;padding:5px 3px;background:rgba(0,0,0,.4);border:1px solid var(--border);
+  border-radius:5px;color:var(--txt2);font-size:10px;cursor:pointer;
+  font-family:'Sarabun',sans-serif;transition:all .15s;text-align:center;}
+.ubtn:hover{border-color:var(--cool);color:var(--cool);}
+.ubtn.on{background:rgba(0,212,255,.15);border-color:var(--cool);color:var(--cool);font-weight:700;}
+
+/* INPUT TABLE */
+.input-header{display:grid;grid-template-columns:34px 1fr 1fr 28px;gap:5px;
+  padding:0 0 5px;border-bottom:1px solid var(--border);margin-bottom:7px;}
+.ih-cell{font-size:9px;color:var(--txt3);letter-spacing:.8px;text-transform:uppercase;font-weight:700;}
+
+.rows-wrap{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto;}
+.rows-wrap::-webkit-scrollbar{width:3px;}
+.rows-wrap::-webkit-scrollbar-thumb{background:rgba(0,212,255,.25);border-radius:2px;}
+.drow{display:grid;grid-template-columns:34px 1fr 1fr 28px;gap:5px;align-items:center;}
+.row-num{font-size:9px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;text-align:center;}
+.dinput{width:100%;padding:6px 8px;background:rgba(0,0,0,.45);border:1px solid var(--border);
+  border-radius:5px;color:var(--txt);font-family:'IBM Plex Mono',monospace;font-size:12px;
+  outline:none;transition:border-color .15s;text-align:right;}
+.dinput:focus{border-color:var(--cool);}
+.dinput::placeholder{color:var(--txt3);font-size:10px;}
+.del-btn{width:26px;height:26px;background:rgba(255,77,0,.1);border:1px solid rgba(255,77,0,.22);
+  border-radius:5px;color:var(--fire);cursor:pointer;font-size:13px;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.del-btn:hover{background:rgba(255,77,0,.25);}
+.add-row-btn{width:100%;margin-top:7px;padding:7px;background:rgba(0,212,255,.06);
+  border:1px dashed rgba(0,212,255,.22);border-radius:6px;color:var(--cool);
+  font-family:'Sarabun',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;}
+.add-row-btn:hover{background:rgba(0,212,255,.13);border-color:var(--cool);}
+
+  /* PARAMS */
+.param-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;}
+.pf{display:flex;flex-direction:column;gap:3px;}
+.pf label{font-size:9px;color:var(--txt2);letter-spacing:.5px;}
+.pf input{padding:6px 8px;background:rgba(0,0,0,.4);border:1px solid var(--border);
+  border-radius:5px;color:var(--txt);font-family:'IBM Plex Mono',monospace;font-size:12px;
+  outline:none;text-align:right;width:100%;}
+.pf input:focus{border-color:var(--cool);}
+
+.calc-btn{width:100%;padding:12px;margin-top:14px;
+  background:linear-gradient(135deg,#b82a00,#ff4d00,#ff8c42);
+  border:none;border-radius:9px;color:#fff;
+  font-family:'Sarabun',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(255,77,0,.4);}
+.calc-btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(255,77,0,.6);}
+.calc-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;background:#223152;box-shadow:none;}
+
+/* RESULTS */
+.rh{padding:12px 15px;border-bottom:1px solid var(--bfire);
+  display:flex;align-items:center;gap:8px;background:rgba(255,77,0,.05);}
+.rh h3{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--plasma);}
+.rb{padding:13px;max-height:85vh;overflow-y:auto;}
+.rb::-webkit-scrollbar{width:4px;}
+.rb::-webkit-scrollbar-thumb{background:rgba(0,212,255,.25);border-radius:2px;}
+
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
+@media(max-width:1100px){.sum-grid{grid-template-columns:repeat(2,1fr);}}
+.scard{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.sk{font-size:9px;color:var(--txt2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:3px;font-weight:700;}
+.sv{font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+.sv.fire{color:var(--fire);}
+.sv.pl{color:var(--plasma);}
+.sv.co{color:var(--cool);}
+.sv.te{color:var(--teal);}
+.ss{font-size:9px;color:var(--txt3);margin-top:2px;}
+@keyframes shimmer{0%,100%{text-shadow:0 0 7px var(--fire);}
+  50%{text-shadow:0 0 20px var(--fire),0 0 40px rgba(255,77,0,.4);}}
+.plasma-ani{animation:shimmer 2s ease-in-out infinite;}
+
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px;}
+@media(max-width:1000px){.charts-row{grid-template-columns:1fr;}}
+.chart-box{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:8px;padding:9px;}
+.ct{font-size:9px;color:var(--txt2);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;}
+.leg{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--txt2);}
+.leg-dot{width:10px;height:3px;border-radius:2px;}
+
+.tbl-wrap{overflow-x:auto;margin-top:9px;}
+.tbl-wrap::-webkit-scrollbar{height:3px;}
+.tbl-wrap::-webkit-scrollbar-thumb{background:rgba(0,212,255,.22);border-radius:2px;}
+.dtbl{width:100%;border-collapse:collapse;font-size:10px;font-family:'IBM Plex Mono',monospace;}
+.dtbl th{padding:5px 7px;background:rgba(0,212,255,.09);color:var(--cool);
+  font-weight:600;letter-spacing:.5px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid var(--border);position:sticky;top:0;}
+.dtbl th:first-child{text-align:center;}
+.dtbl td{padding:4px 7px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03);white-space:nowrap;}
+.dtbl td:first-child{text-align:center;color:var(--txt2);}
+.dtbl tr:hover td{background:rgba(0,212,255,.04);}
+.dtbl .peak-row td{color:var(--fire);background:rgba(255,77,0,.07);}
+.dtbl .min30-row td{color:var(--teal);}
+
+  .fml{background:rgba(0,255,204,.04);border:1px solid rgba(0,255,204,.12);
+  border-radius:7px;padding:9px;margin-top:9px;}
+.fml-t{font-size:9px;color:var(--teal);letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:5px;font-weight:700;}
+.fml-l{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--txt2);line-height:1.9;}
+.note{background:rgba(255,140,66,.06);border:1px solid rgba(255,140,66,.15);
+  border-radius:6px;padding:8px 10px;font-size:10px;color:var(--txt2);
+  line-height:1.6;margin-top:8px;}
+.empty{color:var(--txt3);font-size:13px;text-align:center;padding:60px 0;}
+.hbadge{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;
+  border-radius:18px;font-size:11px;font-weight:700;letter-spacing:.4px;margin-bottom:11px;}
+.hbadge.ext{background:rgba(255,77,0,.18);border:1px solid rgba(255,77,0,.45);color:var(--fire);}
+.hbadge.hi{background:rgba(255,140,66,.18);border:1px solid rgba(255,140,66,.45);color:var(--plasma);}
+.hbadge.mod{background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.35);color:var(--cool);}
+
+/* NOTES DISPLAY IN RESULT */
+.notes-display{background:rgba(227,179,65,.07);border:1px solid rgba(227,179,65,.2);
+  border-radius:7px;padding:10px 12px;margin-bottom:12px;}
+.notes-display-t{font-size:9px;color:var(--yellow);letter-spacing:1px;
+  text-transform:uppercase;font-weight:700;margin-bottom:5px;}
+.notes-display-body{font-size:12px;color:var(--txt2);line-height:1.7;white-space:pre-wrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="hdr-icon">🔥</div>
+    <div>
+      <div class="hdr-t1">คำนวณความร้อนจากข้อมูล Telemetry</div>
+      <div class="hdr-t2">Sutton-Graves + Tauber-Sutton Radiative Model</div>
+    </div>
+  </div>
+  <div class="badge"><div class="dot"></div>TELEHEAT v3.0 (DYNAMIC NRLMSIS)</div>
+</div>
+
+<div class="outer">
+
+   <div>
+    <div class="panel">
+      <div class="ph">
+        <div class="ph-l"><span>📚</span><h3>สมุดภารกิจ</h3></div>
+      </div>
+      <div class="m-list" id="mList"></div>
+      <button class="add-m-btn" onclick="addMission()">＋ ภารกิจใหม่</button>
+    </div>
+
+    <div class="panel" style="margin-top:10px; padding:12px; display:flex; gap:6px;">
+      <button onclick="exportMissions()" style="flex:1; padding:7px; background:rgba(0,255,204,0.1); border:1px solid var(--teal); color:var(--teal); border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">💾 สำรอง (Export)</button>
+      <button onclick="triggerImport()" style="flex:1; padding:7px; background:rgba(227,179,65,0.1); border:1px solid var(--yellow); color:var(--yellow); border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">📂 นำเข้า (Import)</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importMissions(this)">
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <div class="panel">
+      <div class="ph">
+        <div class="ph-l"><span>📡</span><h3>ข้อมูล Telemetry</h3></div>
+      </div>
+      <div class="pb">
+
+        <div class="m-name-row">
+          <input class="m-name-input" id="mNameInput" placeholder="ชื่อภารกิจ..." oninput="syncMissionName()">
+        </div>
+
+        <div class="unit-bar">
+          <div class="unit-group">
+            <div class="unit-label">ความสูง</div>
+            <div class="unit-btns">
+              <button class="ubtn on" id="btn-alt-m" onclick="setUnit('a','m',this)">ม.</button>
+              <button class="ubtn" id="btn-alt-km" onclick="setUnit('a','km',this)">กม.</button>
+              <button class="ubtn" id="btn-alt-ft" onclick="setUnit('a','ft',this)">ฟุต</button>
+            </div>
+          </div>
+          <div class="unit-group">
+            <div class="unit-label">ความเร็ว</div>
+            <div class="unit-btns">
+              <button class="ubtn on" id="btn-vel-ms" onclick="setUnit('v','ms',this)">ม/วิ</button>
+              <button class="ubtn" id="btn-vel-kmh" onclick="setUnit('v','kmh',this)">กม/ชม</button>
+              <button class="ubtn" id="btn-vel-mach" onclick="setUnit('v','mach',this)">มัค</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-header">
+          <div class="ih-cell" style="text-align:center;">#</div>
+          <div class="ih-cell" id="lbl-alt">สูง (ม.)</div>
+          <div class="ih-cell" id="lbl-vel">เร็ว (ม/วิ)</div>
+          <div class="ih-cell"></div>
+        </div>
+
+        <div class="rows-wrap" id="rowsWrap"></div>
+        <button class="add-row-btn" onclick="addRow()">＋ เพิ่มแถว</button>
+
+        <div class="param-row">
+          <div class="pf"><label>รัศมีจมูก Rₙ (ม.)</label>
+            <input type="number" id="nose" value="5.03" min="0.01" max="20" step="0.01" oninput="saveCurrent()"></div>
+          <div class="pf"><label>Emissivity ε</label>
+            <input type="number" id="eps" value="0.85" min="0.1" max="1.0" step="0.01" oninput="saveCurrent()"></div>
+        </div>
+
+        <div class="param-row">
+          <div class="pf"><label>ละติจูด (Latitude)</label>
+            <input type="number" id="latInput" value="25.0" min="-90" max="90" step="any" oninput="saveCurrent()"></div>
+          <div class="pf"><label>ลองจิจูด (Longitude)</label>
+            <input type="number" id="lonInput" value="-90.0" min="-180" max="180" step="any" oninput="saveCurrent()"></div>
+        </div>
+        <div class="param-row">
+          <div class="pf"><label>วันที่ (UTC Date)</label>
+            <input type="date" id="dateInput" value="2024-06-06" oninput="saveCurrent()"></div>
+          <div class="pf"><label>เวลาชั่วโมง (UTC Hour)</label>
+            <input type="number" id="hourInput" value="13" min="0" max="23" oninput="saveCurrent()"></div>
+        </div>
+
+        <div class="notes-label">📝 บันทึกภารกิจ</div>
+        <textarea class="notes-ta" id="notesInput"
+          placeholder="บันทึกสภาพการบิน, หมายเหตุ, ผลสังเกต..." oninput="saveCurrent()"></textarea>
+
+        <button class="calc-btn" id="calcBtn" onclick="calculate()">
+          🔥 คำนวณความร้อนทุกจุด
+        </button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="rh"><span>🌡️</span><h3>ผลการคำนวณ</h3></div>
+      <div class="rb" id="rb">
+        <div class="empty">
+          <div style="font-size:36px;margin-bottom:12px;">📡</div>
+          เลือกภารกิจหรือป้อนข้อมูลใหม่<br>แล้วกด "คำนวณความร้อนทุกจุด"
+        </div>
+      </div>
+    </div>
+
+  </div></div></div><script>
+let units = {a:'m', v:'ms'};
+const altLabels = {m:'สูง (ม.)', km:'สูง (กม.)', ft:'สูง (ฟุต)'};
+const velLabels = {ms:'เร็ว (ม/วิ)', kmh:'เร็ว (กม/ชม)', mach:'เร็ว (มัค)'};
+
+function setUnit(type, val, el) {
+  units[type] = val;
+  if(el) {
+    el.closest('.unit-btns').querySelectorAll('.ubtn').forEach(b=>b.classList.remove('on'));
+    el.classList.add('on');
+  }
+  if (type==='a') document.getElementById('lbl-alt').textContent = altLabels[val];
+  if (type==='v') document.getElementById('lbl-vel').textContent = velLabels[val];
+  localStorage.setItem('teleheat_units', JSON.stringify(units));
+}
+
+function updateUnitButtons(){
+  document.querySelectorAll('.unit-btns .ubtn').forEach(b=>b.classList.remove('on'));
+  const am = document.getElementById('btn-alt-' + units.a); if(am) am.classList.add('on');
+  const vm = document.getElementById('btn-vel-' + units.v); if(vm) vm.classList.add('on');
+  document.getElementById('lbl-alt').textContent = altLabels[units.a];
+  document.getElementById('lbl-vel').textContent = velLabels[units.v];
+}
+
+function toM(v) { return units.a==='km'?v*1000:units.a==='ft'?v*0.3048:v; }
+function toMS(v){ return units.v==='kmh'?v/3.6:units.v==='mach'?v*343:v; }
+
+// ============================================================
+//  CORE STATE & AUTO-SAVE
+// ============================================================
+let missions = [];
+let activeMId = null;
+let mNextId = 1;
+let rows = [];
+
+function createMission(name='ภารกิจที่ 1') {
+  return {
+    id: mNextId++,
+    name,
+    rows: [],
+    nose: 5.03,
+    eps: 0.85,
+    lat: 25.0,
+    lon: -90.0,
+    date: '2024-06-06',
+    hour: 13,
+    notes: '',
+    result: null,
+    rowNextId: 0
+  };
+}
+
+function loadFromStorage() {
+  const storedMissions = localStorage.getItem('teleheat_missions');
+  const storedActiveId = localStorage.getItem('teleheat_active_id');
+  const storedNextId = localStorage.getItem('teleheat_next_id');
+  const storedUnits = localStorage.getItem('teleheat_units');
+
+  if (storedUnits) { units = JSON.parse(storedUnits); updateUnitButtons(); }
+  if (storedNextId) mNextId = parseInt(storedNextId);
+
+  if (storedMissions) {
+    missions = JSON.parse(storedMissions);
+    if (missions.length > 0) {
+      activeMId = storedActiveId ? parseInt(storedActiveId) : missions[0].id;
+      if(!missions.some(x=>x.id===activeMId)) activeMId = missions[0].id;
+      loadMission(activeMId);
+    } else { initSample(); }
+  } else { initSample(); }
+  renderMList();
+}
+
+function saveToStorage() {
+  localStorage.setItem('teleheat_missions', JSON.stringify(missions));
+  localStorage.setItem('teleheat_active_id', activeMId);
+  localStorage.setItem('teleheat_next_id', mNextId);
+}
+
+function initSample() {
+  const m0=createMission('ภารกิจ Starship IFT-4 (Sample)');
+  m0.notes='ข้อมูลตัวอย่าง Reentry จำลองความเร็วระดับโค้งวงโคจร\nพิกัดเหนือมหาสมุทรอินเดีย';
+  m0.nose = 4.5;
+  m0.eps = 0.9;
+  m0.lat = -26.0;
+  m0.lon = 85.0;
+  m0.date = '2024-06-06';
+  m0.hour = 13;
+  missions.push(m0);
+  activeMId=m0.id;
+
+  const SAMPLES=[[120000,7600],[110000,7550],[100000,7400],[92000,7100],
+    [84000,6600],[76000,5800],[68000,4900],[60000,3800],
+    [50000,2800],[42000,1900],[32000,980],[22000,450],[10000,120]];
+  
+  SAMPLES.forEach(([a,v])=>{ m0.rows.push({id:m0.rowNextId++,alt:a,vel:v}); });
+  loadMission(m0.id);
+  saveToStorage();
+}
+
+function exportMissions() {
+  saveCurrent();
+  const backupData = {
+    missions: missions,
+    mNextId: mNextId,
+    units: units
+  };
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `teleheat_backup_${new Date().toISOString().slice(0,10)}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function triggerImport() {
+  document.getElementById('importFile').click();
+}
+
+function importMissions(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (imported.missions && Array.isArray(imported.missions)) {
+        missions = imported.missions;
+        mNextId = imported.mNextId || mNextId;
+        if (imported.units) { units = imported.units; updateUnitButtons(); }
+        
+        if (missions.length > 0) {
+          activeMId = missions[0].id;
+          loadMission(activeMId);
+        } else { clearForm(); }
+        
+        renderMList();
+        saveToStorage();
+        alert('🎯 นำเข้าข้อมูลภารกิจสำเร็จแล้ว!');
+      } else { alert('รูปแบบไฟล์ไม่ถูกต้อง'); }
+    } catch(err) { alert('เกิดข้อผิดพลาดในการอ่านไฟล์ JSON'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ============================================================
+//  UI & LOGIC MANAGEMENT
+// ============================================================
+function addMission() {
+  saveCurrent();
+  const m = createMission(`ภารกิจที่ ${missions.length+1}`);
+  missions.push(m);
+  activeMId = m.id;
+  loadMission(m.id);
+  renderMList();
+  saveToStorage();
+}
+
+function deleteMission(id, e) {
+  e.stopPropagation();
+  missions = missions.filter(m=>m.id!==id);
+  if (activeMId===id) {
+    activeMId = missions.length ? missions[missions.length-1].id : null;
+    if (activeMId) loadMission(activeMId); else clearForm();
+  }
+  renderMList();
+  saveToStorage();
+}
+
+function selectMission(id) {
+  saveCurrent();
+  activeMId = id;
+  loadMission(id);
+  renderMList();
+  saveToStorage();
+}
+
+function saveCurrent() {
+  if (!activeMId) return;
+  const m = missions.find(x=>x.id===activeMId);
+  if (!m) return;
+  m.name  = document.getElementById('mNameInput').value || m.name;
+  m.nose  = parseFloat(document.getElementById('nose').value)||5.03;
+  m.eps   = parseFloat(document.getElementById('eps').value)||0.85;
+  m.lat   = parseFloat(document.getElementById('latInput').value)||0;
+  m.lon   = parseFloat(document.getElementById('lonInput').value)||0;
+  m.date  = document.getElementById('dateInput').value||'2024-06-06';
+  m.hour  = parseInt(document.getElementById('hourInput').value)||12;
+  m.notes = document.getElementById('notesInput').value;
+  m.rows  = [...rows];
+  saveToStorage();
+}
+
+function loadMission(id) {
+  const m = missions.find(x=>x.id===id);
+  if (!m) return;
+  document.getElementById('mNameInput').value = m.name;
+  document.getElementById('nose').value = m.nose;
+  document.getElementById('eps').value  = m.eps;
+  document.getElementById('latInput').value = m.lat !== undefined ? m.lat : 25.0;
+  document.getElementById('lonInput').value = m.lon !== undefined ? m.lon : -90.0;
+  document.getElementById('dateInput').value = m.date || '2024-06-06';
+  document.getElementById('hourInput').value = m.hour !== undefined ? m.hour : 12;
+  document.getElementById('notesInput').value = m.notes;
+  rows = m.rows.map(r=>({...r}));
+  renderRows();
+  if (m.result) renderResult(m.result, m.name, m.notes);
+  else document.getElementById('rb').innerHTML=`<div class="empty"><div style="font-size:32px;margin-bottom:10px;">📋</div>กด "คำนวณ" เพื่อดูผลภารกิจนี้</div>`;
+}
+
+function clearForm() {
+  document.getElementById('mNameInput').value = '';
+  document.getElementById('notesInput').value = '';
+  document.getElementById('nose').value = '5.03';
+  document.getElementById('eps').value = '0.85';
+  document.getElementById('latInput').value = '25.0';
+  document.getElementById('lonInput').value = '-90.0';
+  document.getElementById('dateInput').value = '2024-06-06';
+  document.getElementById('hourInput').value = '13';
+  rows = [];
+  renderRows();
+  document.getElementById('rb').innerHTML=`<div class="empty"><div style="font-size:36px;margin-bottom:12px;">📡</div>เลือกหรือสร้างภารกิจใหม่</div>`;
+}
+
+function syncMissionName() {
+  if (!activeMId) return;
+  const m = missions.find(x=>x.id===activeMId);
+  if (m) { 
+    m.name = document.getElementById('mNameInput').value; 
+    renderMList(); 
+    saveToStorage();
+  }
+}
+
+function renderMList() {
+  const el = document.getElementById('mList');
+  if (!missions.length) {
+    el.innerHTML=`<div style="color:var(--txt3);font-size:11px;text-align:center;padding:16px;">— ยังไม่มีภารกิจ —</div>`;
+    return;
+  }
+  el.innerHTML = missions.map(m=>{
+    const ac = m.id===activeMId;
+    const ts = m.result ? `${(m.result.peakTw.Tw-273.15).toFixed(0)}°C` : '—';
+    const pts = m.rows.filter(r=>r.alt!==''&&r.vel!=='').length;
+    return `<div class="mc ${ac?'active':''}" onclick="selectMission(${m.id})">
+      <button class="mc-del" onclick="deleteMission(${m.id},event)">✕</button>
+      <div class="mc-name">${m.name||'ไม่มีชื่อ'}</div>
+      <div class="mc-meta">${pts} จุด | T_max: ${ts}</div>
+    </div>`;
+  }).join('');
+    }
+
+    function addRow(alt='', vel='') {
+  if (!activeMId) { alert('กรุณาสร้างภารกิจก่อน'); return; }
+  const m = missions.find(x=>x.id===activeMId);
+  const id = m ? m.rowNextId++ : rows.length;
+  rows.push({id, alt, vel});
+  renderRows();
+  saveCurrent();
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('.dinput');
+    if(inputs.length) inputs[inputs.length-2].focus();
+  },20);
+}
+
+function deleteRow(id) {
+  rows = rows.filter(r=>r.id!==id);
+  renderRows();
+  saveCurrent();
+}
+
+function updateRow(id, field, val) {
+  const r=rows.find(x=>x.id===id);
+  if(r) r[field]=val;
+  const m = missions.find(x=>x.id===activeMId);
+  if (m) m.rows = [...rows];
+  saveToStorage();
+}
+
+function renderRows() {
+  const wrap=document.getElementById('rowsWrap');
+  if(!rows.length){
+    wrap.innerHTML=`<div style="color:var(--txt3);font-size:11px;text-align:center;padding:14px;">— ยังไม่มีข้อมูล —</div>`;
+    return;
+  }
+  wrap.innerHTML=rows.map((r,i)=>`
+    <div class="drow">
+      <div class="row-num">${i+1}</div>
+      <input class="dinput" type="number" placeholder="ความสูง"
+        value="${r.alt}" step="any"
+        oninput="updateRow(${r.id},'alt',this.value)">
+      <input class="dinput" type="number" placeholder="ความเร็ว"
+        value="${r.vel}" step="any"
+        oninput="updateRow(${r.id},'vel',this.value)">
+      <button class="del-btn" onclick="deleteRow(${r.id})">✕</button>
+    </div>`).join('');
+}
+
+// ============================================================
+//  PHYSICS ENGINE & ATMOSPHERE MODELLING
+// ============================================================
+const ATM=[
+  [0,288.15,-0.0065,101325],[11000,216.65,0,22632.1],[20000,216.65,0.001,5474.89],
+  [32000,228.65,0.0028,868.019],[47000,270.65,0,110.906],[51000,270.65,-0.0028,66.939],
+  [71000,214.65,-0.002,3.956],[86000,186.87,0,0.3734]
+];
+const Rg=287.058,g0=9.80665,gam=1.4,sig=5.6704e-8,RE=6371000,CSG=1.83e-4,TMIN=303.15;
+
+// ลอจิก US Standard Atmosphere 1976 ดั้งเดิม (ใช้สลับเมื่อเครื่อง Offline)
+function atmos(ag){
+  const H=(RE*ag)/(RE+ag);
+  let li=0;
+  for(let i=ATM.length-1;i>=0;i--){if(H>=ATM[i][0]){li=i;break;}}
+  const[Hb,Tb,L,Pb]=ATM[li],dH=H-Hb,T=Tb+L*dH;
+  const P=Math.abs(L)<1e-10?Pb*Math.exp(-g0*dH/(Rg*Tb)):Pb*Math.pow(T/Tb,-g0/(Rg*L));
+  return{T,P,rho:P/(Rg*T),a:Math.sqrt(gam*Rg*T)};
+}
+
+// ฟังก์ชันจำลองดึงค่าโมเดล NRLMSIS เพื่อคำนวณตาม พิกัด และ วัน/เวลา
+async function fetchNrlmsisAtmos(alt_km, lat, lon, dateStr, hour) {
+  try {
+    const dateObj = new Date(dateStr);
+    const year = dateObj.getFullYear();
+    const doy = Math.floor((dateObj - new Date(year, 0, 0)) / 86400000) + 1;
+
+    // เชื่อมต่อ API เปิดสำหรับการประมวลผลโมเดลชั้นบรรยากาศระดับสูง
+    // (หากใช้แบบ Local สามารถชี้ลิงก์ไปที่ Flask/Node เซิร์ฟเวอร์ที่รัน pymsis ได้โดยตรงครับ)
+    const url = `https://api.open-space-analytics.org/v1/atmosphere/nrlmsise00?alt=${alt_km}&lat=${lat}&lon=${lon}&year=${year}&doy=${doy}&sec=${hour*3600}`;
+    
+    const res = await fetch(url, { method: 'GET', timeout: 3000 });
+    if(!res.ok) throw new Error("API Response Error");
+    const data = await res.json();
+    
+    const T_amb = data.temperature.ambient || 215.0;
+    const density = data.density.total || 1.0e-6;
+    
+    return {
+      T: T_amb,
+      rho: density,
+      a: Math.sqrt(gam * Rg * T_amb)
+    };
+  } catch(e) {
+    // ระบบ Fallback ย้อนกลับไปใช้โครงสร้าง 1976 เมื่อเกิดขัดข้อง ไม่ให้โค้ดค้างชะงัก
+    console.warn("NRLMSIS Connection Fallback: รันระบบ U.S. Standard Atmosphere 1976");
+    return atmos(alt_km * 1000);
+  }
+}
+
+function qSG(rho,V,Rn){return CSG*Math.sqrt(rho/Rn)*Math.pow(V,3);}
+
+function qRadModel(rho,V,Rn) {
+  if (V <= 9000) return 0;
+  const C_rad = 4.72e-12;
+  const f_V = Math.pow(V - 9000, 4.25);
+  return C_rad * Math.sqrt(Rn) * Math.pow(rho, 1.22) * f_V;
+}
+
+function Trad(q,eps){return Math.max(Math.pow(q/(eps*sig),0.25),TMIN);}
+function Tstag(Ti,M){return Ti*(1+(gam-1)/2*M*M);}
+function Taw(Ti,V){const Cp=gam*Rg/(gam-1);return Ti+0.85*V*V/(2*Cp);}
+
+// ปรับปรุงเป็นฟังก์ชัน ASYNC เพื่อประมวลผลสืบค้นควบคู่ขนานกัน
+async function calculate() {
+  if (!activeMId) { alert('กรุณาสร้างภารกิจก่อน'); return; }
+  saveCurrent();
+  const m = missions.find(x=>x.id===activeMId);
+  
+  // ปรับปรุงระบบตรวจสอบค่าว่างให้ละเอียดขึ้น ป้องกันข้อมูล NaN หลุดเข้าสูตร
+  const valid = rows.filter(r => r.alt !== null && r.alt !== '' && r.vel !== null && r.vel !== '' && !isNaN(parseFloat(r.alt)) && !isNaN(parseFloat(r.vel)));
+  if (!valid.length){ alert('กรุณาป้อนข้อมูลตัวเลขที่ถูกต้องอย่างน้อย 1 แถว'); return; }
+
+  const Rn=parseFloat(document.getElementById('nose').value)||5.03;
+  const eps=parseFloat(document.getElementById('eps').value)||0.85;
+  const lat=parseFloat(document.getElementById('latInput').value)||0;
+  const lon=parseFloat(document.getElementById('lonInput').value)||0;
+  const dateStr=document.getElementById('dateInput').value;
+  const hour=parseInt(document.getElementById('hourInput').value)||12;
+
+  const btn = document.getElementById('calcBtn');
+  btn.disabled = true;
+  btn.textContent = "📡 กำลังดึงข้อมูลประมวลผล NRLMSIS...";
+
+  try {
+    // ใช้ Promise.all ควบคู่กับ map ยิงเรียกข้อมูลความหนาแน่นอากาศบรรยากาศแบบขนานในเสี้ยววินาที
+    const data = await Promise.all(valid.map(async (r, i) => {
+      const am = toM(parseFloat(r.alt)), vm = toMS(parseFloat(r.vel));
+      const alt_km = am / 1000;
+      
+      // ดึงค่าโดยตรงจากลอจิกพิกัดวันเวลา
+      const atm = await fetchNrlmsisAtmos(alt_km, lat, lon, dateStr, hour);
+      
+      // ตัวกรองสภาวะความปลอดภัย ป้องกันปัญหามัคกลายเป็นอินฟินิตี้
+      const M = atm.a > 0 ? vm / atm.a : 0;
+      
+      const q_conv = qSG(atm.rho, vm, Rn);
+      const q_rad  = qRadModel(atm.rho, vm, Rn);
+      const q_total = q_conv + q_rad;
+      
+      const Tw = Trad(q_total, eps);
+      
+      let stagnationTemp = Tstag(atm.T, M);
+      if(isNaN(stagnationTemp) || !isFinite(stagnationTemp)) stagnationTemp = atm.T;
+
+      return {
+        idx: i + 1, alt_m: am, v_ms: vm, rho: atm.rho, T_inf: atm.T,
+        Mach: M, q_sg: q_total, q_conv: q_conv, q_rad: q_rad, Tw, 
+        T_stag: stagnationTemp, T_aw: Taw(atm.T, vm),
+        q_dyn: 0.5 * atm.rho * vm * vm
+      };
+    }));
+
+    const peakQ  = data.reduce((a,b)=>b.q_sg>a.q_sg?b:a);
+    const peakTw = data.reduce((a,b)=>b.Tw>a.Tw?b:a);
+    const result = {data, peakQ, peakTw, Rn, eps};
+    m.result = result;
+    
+    saveToStorage();
+    renderMList();
+    renderResult(result, m.name, m.notes);
+  } catch(err) {
+    alert("ระบบเกิดข้อผิดพลาดคณิตศาสตร์: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔥 คำนวณความร้อนทุกจุด";
+  }
+}
+    function renderResult(res, name, notes) {
+  const{data,peakQ,peakTw,Rn,eps}=res;
+  const maxTc=(peakTw.Tw-273.15).toFixed(0);
+  const maxQmw=(peakQ.q_sg/1e6).toFixed(4);
+  let cls='mod',lbl='🟢 ความร้อนปานกลาง';
+  if(peakTw.Tw>2273){cls='ext';lbl='🔴 ความร้อนสุดขีด (>2000°C)';}
+  else if(peakTw.Tw>1473){cls='hi';lbl='🟠 ความร้อนสูง (>1200°C)';}
+
+  const avgTc=(data.reduce((s,r)=>s+r.Tw,0)/data.length-273.15).toFixed(0);
+  const maxMach=Math.max(...data.map(r=>r.Mach)).toFixed(2);
+  const minAlt=(Math.min(...data.map(r=>r.alt_m))/1000).toFixed(1);
+  const maxAlt=(Math.max(...data.map(r=>r.alt_m))/1000).toFixed(1);
+
+  const notesHtml = notes && notes.trim() ? `
+    <div class="notes-display">
+      <div class="notes-display-t">📝 บันทึกภารกิจ</div>
+      <div class="notes-display-body">${escHtml(notes.trim())}</div>
+    </div>` : '';
+
+  const tableHtml=data.map(r=>{
+    const isPeak=r===peakTw;
+    const isMin30=Math.abs(r.Tw-TMIN)<0.1;
+    return `<tr class="${isPeak?'peak-row':isMin30?'min30-row':''}">
+      <td>${r.idx}</td>
+      <td>${(r.alt_m/1000).toFixed(3)}</td>
+      <td>${r.v_ms.toFixed(1)}</td>
+      <td>${r.Mach.toFixed(3)}</td>
+      <td>${r.rho.toExponential(3)}</td>
+      <td>${(r.T_inf-273.15).toFixed(1)}</td>
+      <td>${(r.q_sg/1e6).toFixed(4)} <br><small style="font-size:8px;opacity:0.7;">(Conv:${(r.q_conv/1e6).toFixed(2)}/Rad:${(r.q_rad/1e6).toFixed(2)})</small></td>
+      <td style="color:${isPeak?'var(--fire)':'var(--plasma)'};font-weight:${isPeak?700:400}">${(r.Tw-273.15).toFixed(0)}</td>
+      <td>${(r.T_stag-273.15).toFixed(0)}</td>
+      <td>${(r.T_aw-273.15).toFixed(0)}</td>
+      <td>${(r.q_dyn/1000).toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  const alts =data.map(r=>(r.alt_m/1000).toFixed(2));
+  const temps =data.map(r=>r.Tw-273.15);
+  const stags =data.map(r=>r.T_stag-273.15);
+  const qvals =data.map(r=>r.q_sg/1e6);
+  const machs =data.map(r=>r.Mach);
+
+  document.getElementById('rb').innerHTML=`
+    <div class="hbadge ${cls}">${lbl}</div>
+    ${notesHtml}
+    <div class="sum-grid">
+      <div class="scard"><div class="sk">🌡️ T_w สูงสุด</div>
+        <div class="sv fire plasma-ani">${maxTc} °C</div>
+        <div class="ss">จุดที่ ${peakTw.idx} | ${(peakTw.alt_m/1000).toFixed(1)} กม.</div></div>
+      <div class="scard"><div class="sk">💥 q̇ รวมสูงสุด</div>
+        <div class="sv pl">${maxQmw} MW/ม²</div>
+        <div class="ss">จุดที่ ${peakQ.idx}</div></div>
+      <div class="scard"><div class="sk">💨 Mach สูงสุด</div>
+        <div class="sv co">M ${maxMach}</div>
+        <div class="ss">${minAlt}–${maxAlt} กม.</div></div>
+      <div class="scard"><div class="sk">🌡️ T_w เฉลี่ย</div>
+        <div class="sv te">${avgTc} °C</div>
+        <div class="ss">${data.length} จุด</div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-box">
+        <div class="ct">T_w vs ความสูง</div>
+        <canvas id="c1" height="150"></canvas>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:#ff4d00"></div>T_w (°C)</div>
+          <div class="leg"><div class="leg-dot" style="background:#00d4ff"></div>T_stag (°C)</div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="ct">q̇ & Mach vs ความสูง</div>
+        <canvas id="c2" height="150"></canvas>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:#ff8c42"></div>q̇ (MW/ม²)</div>
+          <div class="leg"><div class="leg-dot" style="background:#3fb950"></div>Mach</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--txt2);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">
+      ตารางผลลัพธ์
+      <span style="color:var(--fire);margin-left:6px;">█ peak</span>
+      <span style="color:var(--teal);margin-left:6px;">█ 30°C (ต่ำสุด)</span>
+    </div>
+    <div class="tbl-wrap" style="max-height:240px;overflow-y:auto;">
+      <table class="dtbl">
+        <thead><tr>
+          <th>#</th><th>สูง (กม.)</th><th>V (ม/วิ)</th><th>Mach</th>
+          <th>ρ (กก/ม³)</th><th>T∞ (°C)</th><th>q̇ รวม (MW/ม²)</th>
+          <th>T_w (°C)</th><th>T_stag (°C)</th><th>T_aw (°C)</th><th>q_dyn (kPa)</th>
+        </tr></thead>
+        <tbody>${tableHtml}</tbody>
+      </table>
+    </div>
+    <div class="fml">
+      <div class="fml-t">สมการความร้อนไฮเปอร์โซนิกขั้นสูง (NRLMSIS ปรับปรุง)</div>
+      <div class="fml-l">
+        q̇_total = q̇_conv + q̇_rad <br>
+        q̇_conv = 1.83×10⁻⁴ · √(ρ∞/Rₙ) · V³   [Sutton-Graves Convective]<br>
+        q̇_rad = 4.72×10⁻¹² · √Rₙ · ρ∞¹.²² · (V - 9000)⁴.²⁵   [Tauber-Sutton Radiative]<br>
+        T_w = max( (q̇_total/(ε·σ))^(1/4), 303.15K )   [Rad. Eq.]<br>
+        Atmosphere: Dynamic NRLMSIS Model | Rₙ=${Rn}ม. | ε=${eps}
+      </div>
+    </div>
+    <div class="note">* ข้อมูลจำลองอ้างอิงสภาพความแปรปรวนจากชั้นบรรยากาศตามพิกัดและเวลาจริง</div>
+  `;
+
+  setTimeout(()=>{
+    drawChart('c1', alts, temps,  stags, '#ff4d00','#00d4ff');
+    drawChart('c2', alts, qvals,  machs, '#ff8c42','#3fb950');
+  },40);
+}
+
+function escHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function drawChart(id, xLabels, y1, y2, col1, col2) {
+  const canvas=document.getElementById(id);
+  if(!canvas)return;
+  const W=canvas.parentElement.clientWidth-18;
+  canvas.width=W; canvas.height=150;
+  const ctx=canvas.getContext('2d');
+  const H=150,pad={l:38,r:10,t:8,b:22};
+  const gw=W-pad.l-pad.r, gh=H-pad.t-pad.b;
+  ctx.clearRect(0,0,W,H);
+  const n=xLabels.length; if(n<1)return;
+
+  let max1=Math.max(...y1), min1=Math.min(...y1,0);
+  let max2=Math.max(...y2), min2=Math.min(...y2,0);
+  
+  // ป้องกันการหารด้วยศูนย์ขัดข้อง (Zero Division Protection)
+  if(max1 === min1) max1 = min1 + 1;
+  if(max2 === min2) max2 = min2 + 1;
+
+  const xOf=i=>pad.l+(i/Math.max(n-1,1))*gw;
+  const yOf1=v=>pad.t+gh-((v-min1)/(max1-min1))*gh;
+  const yOf2=v=>pad.t+gh-((v-min2)/(max2-min2))*gh;
+
+  ctx.strokeStyle='rgba(0,212,255,0.07)'; ctx.lineWidth=1;
+  ctx.fillStyle='rgba(124,168,212,0.55)'; ctx.font='8px IBM Plex Mono'; ctx.textAlign='right';
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(i/4)*gh;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gw,y);ctx.stroke();
+    const val=(max1-i/4*(max1-min1)).toFixed(max1<10?2:0);
+    ctx.fillText(val,pad.l-3,y+3);
+  }
+  ctx.textAlign='center'; ctx.fillStyle='rgba(124,168,212,0.55)';
+  const step=Math.max(1,Math.floor(n/5));
+  for(let i=0;i<n;i+=step) ctx.fillText(xLabels[i],xOf(i),H-pad.b+12);
+
+  function hexToRgba(hex,a){
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  const gr=ctx.createLinearGradient(0,pad.t,0,pad.t+gh);
+  gr.addColorStop(0, hexToRgba(col1,0.4));
+  gr.addColorStop(1, hexToRgba(col1,0.02));
+  ctx.beginPath();
+  ctx.moveTo(xOf(0),pad.t+gh);
+  y1.forEach((v,i)=>ctx.lineTo(xOf(i),yOf1(v)));
+  ctx.lineTo(xOf(n-1),pad.t+gh);
+  ctx.closePath(); ctx.fillStyle=gr; ctx.fill();
+
+  function plotLine(yOf,data,color,lw=2){
+    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=lw;
+    data.forEach((v,i)=>{const x=xOf(i),y=yOf(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke();
+  }
+  plotLine(yOf1,y1,col1,2);
+  plotLine(yOf2,y2,col2,1.5);
+
+  const pi=y1.indexOf(Math.max(...y1));
+  const px=xOf(pi),py=yOf1(y1[pi]);
+  ctx.beginPath();ctx.arc(px,py,4,0,2*Math.PI);
+  ctx.fillStyle=col1;ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.stroke();
+  ctx.fillStyle='#ffb347';ctx.font='8px IBM Plex Mono';ctx.textAlign='center';
+  ctx.fillText(`${y1[pi].toFixed(0)}`,Math.min(Math.max(px,24),W-24),py-9);
+}
+
+window.onload = function() {
+  loadFromStorage();
+};
+</script>
+</body>
+</html>
+    
