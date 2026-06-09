@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
-/* CSS เดิมทั้งหมด (ไม่เปลี่ยน) */
 :root{
   --bg:#050a1a;--panel:rgba(10,22,48,0.96);--border:rgba(0,212,255,0.18);
   --bfire:rgba(255,77,0,0.38);--fire:#ff4d00;--plasma:#ff8c42;
@@ -17,7 +16,6 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:14px;}
-/* (CSS ยาวทั้งหมด ผม copy มาจากต้นฉบับ) */
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background-image: radial-gradient(1px 1px at 10% 15%,rgba(255,255,255,.8) 0%,transparent 100%),
     radial-gradient(1px 1px at 30% 40%,rgba(255,255,255,.6) 0%,transparent 100%),
@@ -58,13 +56,28 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .upload-zone-icon{font-size:28px;margin-bottom:6px;display:block;}
 .upload-zone-txt{font-size:12px;font-weight:600;color:var(--cool);}
 .upload-zone-sub{font-size:9px;color:var(--txt3);margin-top:4px;font-family:'IBM Plex Mono',monospace;}
-.file-status-badge{margin-top:8px;padding:4px 10px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--green);border-radius:20px;font-size:10px;font-family:'IBM Plex Mono',monospace;}
-/* ส่วน CSS อื่นๆ ที่เหลือจากต้นฉบับ (param, calc, table ฯลฯ) ยังคงเหมือนเดิม */
+.file-status-badge{margin-top:8px;padding:4px 10px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--green);border-radius:20px;font-size:10px;font-family:'IBM Plex Mono',monospace;display:none;}
 .param-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;}
 .pf{display:flex;flex-direction:column;gap:3px;}
 .pf label{font-size:9px;color:var(--txt2);letter-spacing:.5px;}
 .pf input{padding:6px 8px;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:5px;color:var(--txt);font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none;text-align:right;width:100%;}
+.pf input:focus{border-color:var(--cool);}
 .calc-btn{width:100%;padding:12px;margin-top:14px;background:linear-gradient(135deg,#b82a00,#ff4d00,#ff8c42);border:none;border-radius:9px;color:#fff;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(255,77,0,.4);}
+.calc-btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(255,77,0,.6);}
+.calc-btn:disabled{opacity:.6;cursor:not-allowed;}
+.rh{padding:12px 15px;border-bottom:1px solid var(--bfire);display:flex;align-items:center;gap:8px;background:rgba(255,77,0,.05);}
+.rh h3{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--plasma);}
+.rb{padding:13px;max-height:85vh;overflow-y:auto;}
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px;}
+@media(max-width:1100px){.sum-grid{grid-template-columns:repeat(2,1fr);}}
+.scard{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.sk{font-size:9px;color:var(--txt2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:3px;font-weight:700;}
+.sv{font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+.sv.fire{color:var(--fire);}
+.dtbl{width:100%;border-collapse:collapse;font-size:10px;font-family:'IBM Plex Mono',monospace;}
+.dtbl th{padding:5px 7px;background:rgba(0,212,255,.09);color:var(--cool);font-weight:600;text-align:right;border-bottom:1px solid var(--border);}
+.dtbl td{padding:4px 7px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03);}
+.dtbl tr:hover td{background:rgba(0,212,255,.04);}
 </style>
 </head>
 <body>
@@ -81,13 +94,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   </div>
 
   <div class="outer">
-    <!-- Sidebar -->
     <div>
-      <!-- สมุดภารกิจ (ยังอยู่เหมือนเดิม) -->
+      <!-- สมุดภารกิจ -->
       <div class="panel">
         <div class="ph"><div class="ph-l"><span>📚</span><h3>สมุดภารกิจ</h3></div></div>
         <div class="m-list" id="mList"></div>
         <button class="add-m-btn" onclick="addMission()">＋ ภารกิจใหม่</button>
+        <div class="panel" style="margin:10px 12px 12px;padding:8px;display:flex;gap:6px;">
+          <button onclick="exportMissions()" style="flex:1;padding:7px;background:rgba(0,255,204,0.1);border:1px solid var(--teal);color:var(--teal);border-radius:6px;font-size:11px;">💾 สำรอง</button>
+          <button onclick="triggerImport()" style="flex:1;padding:7px;background:rgba(227,179,65,0.1);border:1px solid var(--yellow);color:var(--yellow);border-radius:6px;font-size:11px;">📂 นำเข้า</button>
+          <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importMissions(this)">
+        </div>
       </div>
 
       <!-- สภาพบรรยากาศ (ใหม่) -->
@@ -97,7 +114,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
           <div class="upload-zone" onclick="document.getElementById('atmFile').click()">
             <span class="upload-zone-icon">☁️</span>
             <div class="upload-zone-txt">อัพโหลดไฟล์สภาพบรรยากาศ (.txt)</div>
-            <div class="upload-zone-sub">รูปแบบเดียวกับไฟล์ตัวอย่าง</div>
+            <div class="upload-zone-sub">รูปแบบเดียวกับไฟล์ตัวอย่างที่ส่งมา</div>
           </div>
           <input type="file" id="atmFile" accept=".txt" style="display:none" onchange="handleAtmosphereFile(this)">
           <div id="atmStatus" class="file-status-badge"></div>
@@ -105,20 +122,45 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       </div>
     </div>
 
-    <!-- Main Content (จากโค้ดเดิม) -->
     <div class="main-grid">
-      <!-- ส่วน Telemetry Upload, Parameters, Results ฯลฯ ยังเหมือนเดิมทั้งหมด -->
-      <!-- คุณสามารถ copy ส่วนนี้จากโค้ดเดิมของคุณมาใส่ต่อได้ หรือบอกผมถ้าต้องการให้เติมให้ครบ -->
+      <div class="panel">
+        <div class="ph"><div class="ph-l"><span>📡</span><h3>ข้อมูล Telemetry</h3></div></div>
+        <div class="pb">
+          <div class="m-name-row"><input class="m-name-input" id="mNameInput" placeholder="ชื่อภารกิจ..." oninput="syncMissionName()"></div>
+          <!-- Unit selectors, Upload, Parameters ฯลฯ ตามเดิม -->
+          <div class="upload-zone" onclick="document.getElementById('telemetryFile').click()">
+            <span class="upload-zone-icon">📊</span>
+            <span class="upload-zone-txt">กดเลือกไฟล์หรือลากไฟล์มาวางที่นี่</span>
+            <p class="upload-zone-sub">รองรับ .csv และ .xlsx</p>
+            <div id="fileStatusBadge" class="file-status-badge"></div>
+            <input type="file" id="telemetryFile" accept=".csv,.xlsx,.xls" style="display:none;" onchange="handleTelemetryFile(this)">
+          </div>
+          <!-- Parameters -->
+          <div class="param-row">
+            <div class="pf"><label>รัศมีจมูก Rₙ (ม.)</label><input type="number" id="nose" value="5.03" oninput="saveCurrent()"></div>
+            <div class="pf"><label>Emissivity ε</label><input type="number" id="eps" value="0.85" oninput="saveCurrent()"></div>
+          </div>
+          <!-- ... ส่วนอื่นๆ ตามโค้ดเดิม ... -->
+          <button class="calc-btn" onclick="calculate()">🔥 คำนวณความร้อนทุกจุด</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="rh"><span>🌡️</span><h3>ผลการคำนวณ</h3></div>
+        <div class="rb" id="rb"></div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-// ==================== GLOBAL ====================
+// ==================== GLOBAL VARIABLES ====================
 let missions = [];
 let activeMId = null;
 let rows = [];
 let atmosphereData = null;
+let units = { a: 'm', v: 'ms' };
+let activeSeg = 'all';
 
 // ==================== ATMOSPHERE ====================
 function handleAtmosphereFile(input) {
@@ -128,12 +170,11 @@ function handleAtmosphereFile(input) {
   reader.onload = function(e) {
     try {
       atmosphereData = parseAtmosphereFile(e.target.result);
-      if (atmosphereData.length > 0) {
-        document.getElementById('atmStatus').innerHTML = `✅ โหลดสำเร็จ ${atmosphereData.length} แถว`;
-        document.getElementById('atmStatus').style.display = 'block';
-      }
+      const status = document.getElementById('atmStatus');
+      status.style.display = 'block';
+      status.innerHTML = `✅ โหลดสำเร็จ ${atmosphereData.length} แถว (สูงสุด ${Math.max(...atmosphereData.map(d=>d.alt_km)).toFixed(0)} กม.)`;
     } catch (err) {
-      alert("ไม่สามารถอ่านไฟล์ได้");
+      alert("❌ อ่านไฟล์ไม่ได้ กรุณาตรวจสอบรูปแบบ");
     }
   };
   reader.readAsText(file);
@@ -157,36 +198,68 @@ function parseAtmosphereFile(text) {
 
 function getAtmosphereAt(alt_km) {
   if (!atmosphereData || atmosphereData.length === 0) {
-    return {rho: 1.225 * Math.exp(-alt_km/8.5)*0.001, T: 250};
+    return {rho: 1.225 * Math.exp(-alt_km / 8.5) * 0.001, T: 250};
   }
-  for (let i = 0; i < atmosphereData.length-1; i++) {
-    const a = atmosphereData[i], b = atmosphereData[i+1];
+  for (let i = 0; i < atmosphereData.length - 1; i++) {
+    const a = atmosphereData[i];
+    const b = atmosphereData[i+1];
     if (alt_km >= a.alt_km && alt_km <= b.alt_km) {
       const t = (alt_km - a.alt_km) / (b.alt_km - a.alt_km);
-      return {rho: a.rho + t*(b.rho-a.rho), T: a.T + t*(b.T-a.T)};
+      return {
+        rho: a.rho + t * (b.rho - a.rho),
+        T: a.T + t * (b.T - a.T)
+      };
     }
   }
-  return atmosphereData[atmosphereData.length-1];
+  return atmosphereData[atmosphereData.length - 1];
 }
 
-// ==================== CALCULATION (ปรับส่วนนี้) ====================
+// ==================== CALCULATION ====================
 async function calculate() {
-  if (!activeMId || !rows.length) return alert('กรุณาเลือกภารกิจและอัพโหลด Telemetry');
+  if (!activeMId || !rows || rows.length === 0) {
+    alert('กรุณาเลือกภารกิจและอัพโหลด Telemetry');
+    return;
+  }
   if (!atmosphereData) {
-    if (!confirm('ยังไม่ได้โหลดไฟล์บรรยากาศ ใช้ค่าประมาณแทน?')) return;
+    if (!confirm('ยังไม่ได้โหลดไฟล์สภาพบรรยากาศ\nใช้ค่าประมาณแทนหรือไม่?')) return;
   }
 
-  // ... โค้ดคำนวณเดิมของคุณ ...
-  // ใน loop แต่ละ row:
-  // const alt_km = row.alt / 1000;
-  // const atm = getAtmosphereAt(alt_km);
-  // แล้วใช้ atm.rho แทน density จาก NRLMSISE
+  const resultHTML = [];
+  let maxQ = 0, maxTrad = 0;
+
+  for (let r of rows) {
+    const alt_km = toM(r.alt) / 1000;
+    const atm = getAtmosphereAt(alt_km);
+    const rho = atm.rho;
+    const V = toMS(r.vel || 0);
+    const Rn = parseFloat(document.getElementById('nose').value) || 5.03;
+    const eps = parseFloat(document.getElementById('eps').value) || 0.85;
+
+    const q_conv = 1.83e-4 * Math.sqrt(rho / Rn) * Math.pow(V, 3);
+    const q_rad = V > 9000 ? 4.72e-12 * Math.sqrt(Rn) * Math.pow(rho, 1.22) * Math.pow(V - 9000, 4.25) : 0;
+    const q_total = q_conv + q_rad;
+    const T_rad = Math.pow(q_total / (eps * 5.6704e-8), 0.25);
+
+    if (q_total > maxQ) maxQ = q_total;
+    if (T_rad > maxTrad) maxTrad = T_rad;
+
+    resultHTML.push(`<tr><td>\( {r.alt.toFixed(0)}</td><td> \){V.toFixed(0)}</td><td>\( {rho.toExponential(3)}</td><td> \){q_total.toFixed(2)}</td><td>${T_rad.toFixed(0)}</td></tr>`);
+  }
+
+  document.getElementById('rb').innerHTML = `
+    <div class="sum-grid">
+      <div class="scard"><div class="sk">Q MAX</div><div class="sv fire">${maxQ.toFixed(2)}</div><div class="ss">W/cm²</div></div>
+      <div class="scard"><div class="sk">T RAD MAX</div><div class="sv pl">${maxTrad.toFixed(0)}</div><div class="ss">K</div></div>
+    </div>
+    <div class="tbl-wrap"><table class="dtbl"><thead><tr><th>Alt (m)</th><th>Vel (m/s)</th><th>ρ (g/cm³)</th><th>q (W/cm²)</th><th>T (K)</th></tr></thead><tbody>${resultHTML.join('')}</tbody></table></div>
+  `;
 }
 
-// โค้ดส่วน Missions, Telemetry Upload, UI อื่นๆ จากไฟล์เดิมของคุณ
-// (เพิ่มเติมได้ตามต้องการ)
+// ==================== MISSION FUNCTIONS (จากโค้ดเดิม) ====================
+function addMission() { /* ... โค้ดเดิมทั้งหมด ... */ }
+// (ใส่ฟังก์ชัน addMission, loadMissions, saveCurrent, handleTelemetryFile ฯลฯ จากโค้ดเดิมของคุณ)
 
-console.log("%cTelemetry Heat Calculator v4.1 Ready", "color:#00ffcc;font-weight:bold");
+console.log("%cTELEHEAT v4.1 External Atmosphere Ready", "color:#00ffcc;font-size:14px;font-weight:bold");
 </script>
 </body>
-</html>  
+</html>          
