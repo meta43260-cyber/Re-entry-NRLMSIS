@@ -528,22 +528,36 @@ function extractAltVel(row) {
 }
 
 function parseCSVData(text, fileName) {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length < 2) { alert("โครงสร้างไฟล์ CSV ไม่ถูกต้อง"); return; }
+  // รองรับการตัดบรรทัดทั้งระบบ Windows (\r\n) และ Mac/Linux (\n)
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length < 2) { alert("โครงสร้างไฟล์ CSV ไม่ถูกต้อง หรือไม่มีข้อมูล"); return; }
 
-  const headers = lines[0].split(',').map(h => h.replace(/["']/g, "").trim().toLowerCase());
+  // 🛠️ ตรวจจับตัวคั่นคำอัตโนมัติ (comma, semicolon, หรือ tab)
+  let delimiter = ',';
+  const firstLine = lines[0];
+  if (firstLine.includes(';')) delimiter = ';';
+  else if (firstLine.includes('\t')) delimiter = '\t';
+
+  // แยกหัวข้อคอลัมน์และลบเครื่องหมายคำพูด (Quotes)
+  const headers = firstLine.split(delimiter).map(h => h.replace(/["']/g, "").trim().toLowerCase());
   const parsedRows = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',');
+    const cols = lines[i].split(delimiter);
     let rowObj = {};
-    headers.forEach((h, idx) => { rowObj[h] = cols[idx] ? cols[idx].replace(/["']/g, "").trim() : null; });
+    
+    headers.forEach((h, idx) => { 
+      // ลบเครื่องหมายคำพูด และดึงข้อมูลไปเก็บตามหัวตาราง
+      rowObj[h] = cols[idx] ? cols[idx].replace(/["']/g, "").trim() : null; 
+    });
+    
     const matched = extractAltVel(rowObj);
     if (matched) parsedRows.push(matched);
   }
 
   applyParsedRows(parsedRows, fileName);
-}
+                            }
+           
 
 function parseExcelData(jsonData, fileName) {
   if (!jsonData || jsonData.length === 0) { alert("ไม่พบข้อมูลในไฟล์ Excel"); return; }
